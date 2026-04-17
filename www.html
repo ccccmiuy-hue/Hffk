@@ -1,0 +1,165 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Extractor pCloud</title>
+
+<style>
+body {
+  font-family: Arial;
+  background: #111;
+  color: #fff;
+  text-align: center;
+}
+
+button {
+  padding: 10px 20px;
+  margin: 10px;
+  border: none;
+  background: #00ff88;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+#images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px,1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.card {
+  position: relative;
+  background: #222;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+.card img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.remove {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: red;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+textarea {
+  width: 90%;
+  height: 150px;
+  margin-top: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>📥 Extrator de Imagens pCloud</h1>
+
+<button onclick="extrair()">Extrair Imagens</button>
+<button onclick="baixarZip()">Baixar ZIP</button>
+
+<div id="images"></div>
+
+<textarea id="links"></textarea>
+
+<!-- JSZip CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script>
+const url = "https://u.pcloud.link/publink/show?code=VZOc5E5Z33k0LV2GoU77oriNhGreekOpHyvk";
+
+let imagens = [];
+
+async function extrair() {
+  document.getElementById("images").innerHTML = "Carregando...";
+  imagens = [];
+
+  try {
+    const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
+    const res = await fetch(proxy);
+    const html = await res.text();
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, "text/html");
+
+    let encontrados = [];
+
+    doc.querySelectorAll("img").forEach(img => {
+      if (img.src && !img.src.includes("logo")) {
+        encontrados.push(img.src);
+      }
+    });
+
+    // remove duplicados
+    imagens = [...new Set(encontrados)];
+
+    render();
+  } catch (e) {
+    alert("Erro ao extrair: " + e);
+  }
+}
+
+function render() {
+  const container = document.getElementById("images");
+  const textarea = document.getElementById("links");
+
+  container.innerHTML = "";
+  textarea.value = imagens.join("\n");
+
+  imagens.forEach((src, index) => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    const img = document.createElement("img");
+    img.src = src;
+
+    const btn = document.createElement("button");
+    btn.innerText = "X";
+    btn.className = "remove";
+    btn.onclick = () => remover(index);
+
+    div.appendChild(img);
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+}
+
+function remover(index) {
+  imagens.splice(index, 1);
+  render();
+}
+
+async function baixarZip() {
+  const zip = new JSZip();
+
+  for (let i = 0; i < imagens.length; i++) {
+    try {
+      const res = await fetch(imagens[i]);
+      const blob = await res.blob();
+      zip.file("img_" + i + ".jpg", blob);
+    } catch (e) {
+      console.log("Erro em:", imagens[i]);
+    }
+  }
+
+  zip.generateAsync({type:"blob"}).then(content => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(content);
+    a.download = "imagens.zip";
+    a.click();
+  });
+}
+</script>
+
+</body>
+</html>
+```
